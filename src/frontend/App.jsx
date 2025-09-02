@@ -10,12 +10,16 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import ReportIcon from '@mui/icons-material/Report';
 import FileOpenIcon from '@mui/icons-material/FileOpen';
+import HistoryIcon from '@mui/icons-material/History';
 import SaveIcon from '@mui/icons-material/Save';
 import Paper from '@mui/material/Paper';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
 import Modal from '@mui/material/Modal';
 import Typography from '@mui/material/Typography';
 import TextareaAutosize from '@mui/material/TextareaAutosize';
-
+import Drawer from '@mui/material/Drawer';
 import 'jsoneditor/dist/jsoneditor.css';
 import JSONEditor from 'jsoneditor';
 import jsonToGo from '../util/json-to-go';
@@ -31,6 +35,23 @@ const modelStyle = {
     p: 2,
 };
 
+const getHistory = async () => {
+    let history = await window.electronAPI.getHistory();
+    console.log(history)
+    let list = []
+    for (let item of history) {
+        let exists = await window.electronAPI.exists(item);
+        let parts = item.split('/');
+        let name = parts.pop();
+        list.push({
+            dir: parts.join('/'),
+            name: name,
+            exists: exists
+        })
+    }
+    return list
+}
+
 export default function App() {
     const [value, setValue] = React.useState(0);
     const [json, setJSON] = useState({});
@@ -39,22 +60,34 @@ export default function App() {
     const [height, setHeight] = useState(0);
     const [showJsonModal, setShowJsonModal] = useState(false);
     const [jsonModalContent, setJsonModalContent] = useState('');
+    const [open, setOpen] = useState(false);
+    const [history, setHistory] = useState([]);
 
     React.useEffect(() => {
-        console.log(JSONEditor);
         if (!editorRef.current) {
             const container = document.getElementById("jsoneditor")
             const options = {
                 mode: 'code',
+                onValidate: (json) => {
+                    console.log(json)
+                    window.electronAPI.setRecent(json)
+                }
             }
             const editor = new JSONEditor(container, options)
             setHeight(document.documentElement.clientHeight - 74)
             editorRef.current = editor;
+            getHistory().then(list => {
+                setHistory(list)
+            })
+            window.electronAPI.getRecent().then(data => {
+                editorRef.current.set(data)
+            })
         }
         window.onresize = () => {
             setHeight(document.documentElement.clientHeight - 74)
         }
-    }, [json]);
+
+    }, []);
 
     const toGoStruct = () => {
         let result = jsonToGo(JSON.stringify(editorRef.current.get()), null, null, false);
@@ -71,13 +104,19 @@ export default function App() {
         console.log(result);
         if (result) {
             let json = await window.electronAPI.readFile(result);
-            console.log(json);
             try {
                 editorRef.current.set(JSON.parse(json));
+                window.electronAPI.addHistory(result)
             } catch (error) {
                 console.log(error);
             }
         }
+    }
+
+    const handleHistory = async () => {
+        let list = await getHistory()
+        setHistory(list);
+        setOpen(true);
     }
 
     return (
@@ -92,6 +131,7 @@ export default function App() {
                     }}
                 >
                     <BottomNavigationAction label="打开" icon={<FileOpenIcon />} onClick={handleFileOpen} />
+                    <BottomNavigationAction label="历史" icon={<HistoryIcon />} onClick={handleHistory} />
                     <BottomNavigationAction label="转GoStruct" icon={<ReportIcon />} onClick={toGoStruct} />
                     <BottomNavigationAction label="保存" icon={<SaveIcon />} onClick={handleSave} />
                 </BottomNavigation>
@@ -114,6 +154,19 @@ export default function App() {
                     </Typography>
                 </Box>
             </Modal>
+            <Drawer open={open} onClose={() => setOpen(false)}>
+                <Box sx={{ width: 350 }} role="presentation">
+                    <List>
+                        {history.map((item, index) => (
+                            <ListItem button key={index}>
+                                <ListItemText primary={item.name} >
+                                    {item.dir}
+                                </ListItemText>
+                            </ListItem>
+                        ))}
+                    </List>
+                </Box>
+            </Drawer>
         </Box>
     );
 }

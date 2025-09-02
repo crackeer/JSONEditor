@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
-import {readFile} from './backend/fs.js';
+import {readFile, getHistory, addHistory, exists, getRecent, setRecent} from './backend/fs.js';
 import {handleFileOpen} from './backend/dialog.js';
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -39,6 +39,11 @@ app.whenReady().then(() => {
   createWindow();
   ipcMain.handle('dialog:openFile', handleFileOpen)
   ipcMain.handle('fs:readFile', readFile)
+  ipcMain.handle('fs:getHistory', getHistory)
+  ipcMain.handle('fs:addHistory', addHistory)
+  ipcMain.handle('fs:getRecent', getRecent)
+  ipcMain.handle('fs:setRecent', setRecent)
+  ipcMain.handle('fs:exists', exists)
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   app.on('activate', () => {
