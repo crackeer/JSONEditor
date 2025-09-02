@@ -1,13 +1,17 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import lodash from 'lodash';
 export function readFile(e, path) {
     console.log('readFile', path);
     return fs.readFileSync(path, 'utf8');
 }
 
-export function writeFile(e, path, data) {
-    fs.writeFileSync(path, data);
+export function writeFile(e, savePath, data) {
+    console.log('writeFile', savePath, data);
+    let parentDir = path.dirname(savePath);
+    fs.mkdirSync(parentDir, { recursive: true });
+    fs.writeFileSync(savePath, data);
 }
 
 export function exists(path) {
@@ -31,7 +35,7 @@ export function getHistory() {
 
 export function addHistory(e, item) {
     let data = getHistory()
-    let list = [item, ...data]
+    let list = lodash.uniq([item, ...data])
     const historyPath = getHistoryPath();
     return fs.writeFileSync(historyPath, JSON.stringify(list));
 }

@@ -8,6 +8,8 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import RestoreIcon from '@mui/icons-material/Restore';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import ExpandIcon from '@mui/icons-material/Expand';
+import Snackbar from '@mui/material/Snackbar';
 import ReportIcon from '@mui/icons-material/Report';
 import FileOpenIcon from '@mui/icons-material/FileOpen';
 import HistoryIcon from '@mui/icons-material/History';
@@ -52,6 +54,34 @@ const getHistory = async () => {
     return list
 }
 
+const superDecode = (data) => {
+    if (data == null) return data
+    if (typeof data == 'string' && (data.startsWith('[') || data.startsWith('{'))) {
+        try {
+            return JSON.parse(data)
+        } catch (e) {
+            return data
+        }
+    }
+
+    if (typeof data == 'object' && data.length == undefined) {
+        let retData = {}
+        Object.keys(data).forEach(key => {
+            retData[key] = superDecode(data[key])
+        })
+        return retData
+    }
+
+    if (typeof data == 'object' && data.length != undefined) {
+        let list = []
+        for (let i in data) {
+            list.push(superDecode(data[i]))
+        }
+        return list
+    }
+    return data
+}
+
 export default function App() {
     const [value, setValue] = React.useState(0);
     const [json, setJSON] = useState({});
@@ -62,12 +92,15 @@ export default function App() {
     const [jsonModalContent, setJsonModalContent] = useState('');
     const [open, setOpen] = useState(false);
     const [history, setHistory] = useState([]);
+    const [messageShow, setMessageShow] = useState(false);
+    const [message, setMessage] = useState('');
 
     React.useEffect(() => {
         if (!editorRef.current) {
             const container = document.getElementById("jsoneditor")
             const options = {
                 mode: 'code',
+                indentation : 4,
                 onValidate: (json) => {
                     console.log(json)
                     window.electronAPI.setRecent(json)
@@ -95,21 +128,32 @@ export default function App() {
         setJsonModalContent(result.go);
     };
 
-    const handleSave = () => {
-
+    const handleSave = async () => {
+        let result = await window.electronAPI.saveFile();
+        if (result) {
+            let json = editorRef.current.get();
+            await window.electronAPI.writeFile(result, JSON.stringify(json));
+            window.electronAPI.addHistory(result)
+            showMessage('保存到' + result + '成功');
+        }
     }
 
     const handleFileOpen = async () => {
-        let result = await window.electronAPI.openFile();
-        console.log(result);
+        let result = await window.electronAPI.selectFile();
         if (result) {
-            let json = await window.electronAPI.readFile(result);
-            try {
-                editorRef.current.set(JSON.parse(json));
-                window.electronAPI.addHistory(result)
-            } catch (error) {
-                console.log(error);
-            }
+            loadFile(result)
+        }
+    }
+
+    const loadFile = async (file) => {
+        try {
+            let json = await window.electronAPI.readFile(file);
+            editorRef.current.set(JSON.parse(json));
+            window.electronAPI.addHistory(file)
+            return true
+        } catch (error) {
+            console.log(error);
+            return false
         }
     }
 
@@ -117,6 +161,45 @@ export default function App() {
         let list = await getHistory()
         setHistory(list);
         setOpen(true);
+    }
+
+    const clickFile = async (item) => {
+        console.log(item)
+        try {
+            let result = await loadFile(item.dir + '/' + item.name);
+            if (result) {
+                setOpen(false);
+            }
+        } catch (error) {
+
+        }
+    }
+
+    const handleExpand = () => {
+        let json = editorRef.current.get();
+        editorRef.current.set(superDecode(json));
+        
+    }
+
+    const showMessage = (message) => {
+      setMessage(message);
+      setMessageShow(true);
+    }
+
+    const stringify = () => {
+        let data = JSON.stringify(editorRef.current.get());
+        editorRef.current.set(data);
+    }
+
+    const parse = () => {
+        let data = JSON.parse(editorRef.current.get());
+        editorRef.current.set(data);
+    }
+
+    const handleCopy =  async() => {
+        let data = editorRef.current.get();
+        await window.electronAPI.clipboardWriteText(data);
+        showMessage('复制成功');
     }
 
     return (
@@ -134,6 +217,10 @@ export default function App() {
                     <BottomNavigationAction label="历史" icon={<HistoryIcon />} onClick={handleHistory} />
                     <BottomNavigationAction label="转GoStruct" icon={<ReportIcon />} onClick={toGoStruct} />
                     <BottomNavigationAction label="保存" icon={<SaveIcon />} onClick={handleSave} />
+                    <BottomNavigationAction label="序列化" icon={<SaveIcon />} onClick={stringify} />
+                    <BottomNavigationAction label="反序列化" icon={<SaveIcon />} onClick={parse} />
+                    <BottomNavigationAction label="复制" icon={<SaveIcon />} onClick={handleCopy} />
+                    <BottomNavigationAction label="展开" icon={<ExpandIcon />} onClick={handleExpand} />
                 </BottomNavigation>
             </Paper>
 
@@ -148,6 +235,7 @@ export default function App() {
                     <Typography id="modal-modal-description" sx={{ mt: 2 }}>
                         <TextareaAutosize
                             minRows={4}
+                            maxRows={20}
                             defaultValue={jsonModalContent}
                             style={{ width: '100%' }}
                         />
@@ -158,8 +246,8 @@ export default function App() {
                 <Box sx={{ width: 350 }} role="presentation">
                     <List>
                         {history.map((item, index) => (
-                            <ListItem button key={index}>
-                                <ListItemText primary={item.name} >
+                            <ListItem button={true} key={index} onClick={clickFile.bind(this, item)}>
+                                <ListItemText primary={item.name} secondary={item.dir}>
                                     {item.dir}
                                 </ListItemText>
                             </ListItem>
@@ -167,6 +255,13 @@ export default function App() {
                     </List>
                 </Box>
             </Drawer>
+            <Snackbar
+                open={messageShow}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                autoHideDuration={2000}
+                onClose={() => setMessageShow(false)}
+                message={message}
+            />
         </Box>
     );
 }
