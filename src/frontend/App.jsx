@@ -11,6 +11,9 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import ExpandIcon from '@mui/icons-material/Expand';
 import Snackbar from '@mui/material/Snackbar';
 import ReportIcon from '@mui/icons-material/Report';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CodeIcon from '@mui/icons-material/Code';
+import CodeOffIcon from '@mui/icons-material/CodeOff';
 import FileOpenIcon from '@mui/icons-material/FileOpen';
 import HistoryIcon from '@mui/icons-material/History';
 import SaveIcon from '@mui/icons-material/Save';
@@ -198,7 +201,7 @@ export default function App() {
 
     const handleCopy =  async() => {
         let data = editorRef.current.get();
-        await window.electronAPI.clipboardWriteText(data);
+        await window.electronAPI.clipboardWriteText(JSON.stringify(data));
         showMessage('复制成功');
     }
 
@@ -217,9 +220,9 @@ export default function App() {
                     <BottomNavigationAction label="历史" icon={<HistoryIcon />} onClick={handleHistory} />
                     <BottomNavigationAction label="转GoStruct" icon={<ReportIcon />} onClick={toGoStruct} />
                     <BottomNavigationAction label="保存" icon={<SaveIcon />} onClick={handleSave} />
-                    <BottomNavigationAction label="序列化" icon={<SaveIcon />} onClick={stringify} />
-                    <BottomNavigationAction label="反序列化" icon={<SaveIcon />} onClick={parse} />
-                    <BottomNavigationAction label="复制" icon={<SaveIcon />} onClick={handleCopy} />
+                    <BottomNavigationAction label="序列化" icon={<CodeOffIcon />} onClick={stringify} />
+                    <BottomNavigationAction label="反序列化" icon={<CodeIcon />} onClick={parse} />
+                    <BottomNavigationAction label="复制" icon={<ContentCopyIcon />} onClick={handleCopy} />
                     <BottomNavigationAction label="展开" icon={<ExpandIcon />} onClick={handleExpand} />
                 </BottomNavigation>
             </Paper>

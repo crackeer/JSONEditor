@@ -5,5 +5,6 @@ export function readText() {
 }
 
 export function writeText(e, text) {
+    console.log(text)
     clipboard.writeText(text);
 }

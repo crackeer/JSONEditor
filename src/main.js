@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -21,7 +21,6 @@ const createWindow = () => {
             preload: path.join(__dirname, 'preload.js'),
         },
     });
-
     // and load the index.html of the app.
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -58,7 +57,40 @@ app.whenReady().then(() => {
             createWindow();
         }
     });
+    //buildMenu();
 });
+
+const buildMenu = () => {
+    let template = [
+        {
+            submenu: [
+                {
+                    label: '打开',
+                    accelerator: 'CmdOrCtrl+O',
+                    click: () => {
+                        handleFileOpen();
+                    }
+                },
+                {
+                    label: '保存',
+                    accelerator: 'CmdOrCtrl+S',
+                    click: () => {
+                        handleFileSave();
+                    }
+                },
+                {
+                    label: '退出',
+                    accelerator: 'CmdOrCtrl+Q',
+                    click: () => {
+                        app.quit();
+                    }
+                }
+            ]
+        }
+    ]
+    let menu = Menu.buildFromTemplate(template)
+    Menu.setApplicationMenu(menu)
+}
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

@@ -1,6 +1,6 @@
 {
-  "name": "electron-app",
-  "productName": "electron-app",
+  "name": "json-editor",
+  "productName": "JSON编辑器",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
